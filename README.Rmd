@@ -33,7 +33,6 @@ You can install the development version of causaleffects like so:
 This is a basic example which shows you how to solve a common problem:
 
 ```{r example}
-library(causaleffects)
 ## basic example code
 ```
 
