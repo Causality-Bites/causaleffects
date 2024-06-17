@@ -80,7 +80,7 @@ param_gcomp_fix <- function(dat,
       )
       mod <- stats::glm(
         formula = stats::as.formula(form),
-        family = fam,
+        family = fam[[1]],
         data = dat,
         weights = survey_weights,
         na.action = "na.omit"
