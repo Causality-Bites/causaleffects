@@ -39,7 +39,9 @@ param_gcomp_fix(
 \item{cross_val}{TBD.}
 }
 \value{
-The counterfactual mean of the outcome.
+The counterfactual means of the outcome under no intervention
+(natural course) and the intervention of interest as
+specified by the shift function.
 }
 \description{
 Implementation of the parametric g-formula for a single time point.

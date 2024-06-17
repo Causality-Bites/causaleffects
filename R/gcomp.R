@@ -52,7 +52,9 @@ parametric_g_computation <- function(dat,
 #' @param SL_library Vector of learners or function. A vector of strings or function.
 #' @param cross_val TBD.
 #'
-#' @return The counterfactual mean of the outcome.
+#' @return The counterfactual means of the outcome under no intervention
+#'        (natural course) and the intervention of interest as
+#'        specified by the shift function.
 #' @export
 param_gcomp_fix <- function(dat,
                             idxs,
@@ -87,10 +89,9 @@ param_gcomp_fix <- function(dat,
       )
 
       # Create counterfactual data and predict outcome
-      if (!is.null(shift_function)) {
-        dat <- shift_function(dat, exposures)
-      }
+      dat_shifted <- shift_function(dat, exposures)
       dat[[outcome]] <- stats::predict(mod, dat)
+      dat_shifted[[outcome]] <- stats::predict(mod, dat_shifted)
 
     } else {
       # SL
@@ -100,6 +101,8 @@ param_gcomp_fix <- function(dat,
 
   } # End if for CV choice
 
-  return(mean(dat[[outcome]]))
+  return(
+    c(mean(dat[[outcome]]), mean(dat_shifted[[outcome]]))
+  )
 } # End function param_gcomp_fix
 ################################################################################
