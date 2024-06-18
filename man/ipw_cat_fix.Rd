@@ -3,7 +3,7 @@
 \name{ipw_cat_fix}
 \alias{ipw_cat_fix}
 \title{Implementation of a specific IPW estimator (categorical exposures)
-for a single time point.}
+for a single exposure and time point.}
 \usage{
 ipw_cat_fix(
   dat,
@@ -12,6 +12,7 @@ ipw_cat_fix(
   exposure,
   outcome,
   form,
+  form_cens,
   survey_weights,
   SL_library,
   cross_val
@@ -30,6 +31,8 @@ ipw_cat_fix(
 
 \item{form}{Model formula. A string.}
 
+\item{form_cens}{TBD}
+
 \item{survey_weights}{Optional vector of survey/balancing weights. A vector.}
 
 \item{SL_library}{Vector of learners or function. A vector of strings or function.}
@@ -43,5 +46,5 @@ specified by the shift function.
 }
 \description{
 Implementation of a specific IPW estimator (categorical exposures)
-for a single time point.
+for a single exposure and time point.
 }

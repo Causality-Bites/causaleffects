@@ -2,7 +2,7 @@
 % Please edit documentation in R/ipw.R
 \name{ipw}
 \alias{ipw}
-\title{Implementation of an IPW estimator.}
+\title{Implementations of IPW estimators.}
 \usage{
 ipw(
   dat,
@@ -13,6 +13,7 @@ ipw(
   outcome,
   censoring,
   forms,
+  form_cens,
   shift_functions,
   survey_weights,
   SL_library,
@@ -37,6 +38,8 @@ ipw(
 
 \item{forms}{Models formulas. A vector of strings.}
 
+\item{form_cens}{TBD}
+
 \item{shift_functions}{Functions to shift the exposures. A vector of functions.}
 
 \item{survey_weights}{Optional vector of survey/balancing weights. A vector.}
@@ -51,5 +54,5 @@ ipw(
 The counterfactual mean of the outcome.
 }
 \description{
-Implementation of an IPW estimator.
+Implementations of IPW estimators.
 }

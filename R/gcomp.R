@@ -103,7 +103,10 @@ param_gcomp_fix <- function(dat,
   } # End if for CV choice
 
   return(
-    c(mean(dat[[outcome]]), mean(dat_shifted[[outcome]]))
+    c(
+      mean(dat[[outcome]]),
+      mean(dat_shifted[[outcome]])
+    )
   )
 } # End function param_gcomp_fix
 ################################################################################

@@ -1,4 +1,4 @@
-#' Implementation of an IPW estimator.
+#' Implementations of IPW estimators.
 #'
 #' @param dat Dataset with confounders, exposures, and outcome. A dataframe.
 #' @param idxs Indexes for bootstrapping. A vector of integers.
@@ -8,6 +8,7 @@
 #' @param outcome Outcome variable. A string.
 #' @param censoring Censoring variable. A vector of strings.
 #' @param forms Models formulas. A vector of strings.
+#' @param form_cens TBD
 #' @param shift_functions Functions to shift the exposures. A vector of functions.
 #' @param survey_weights Optional vector of survey/balancing weights. A vector.
 #' @param SL_library Vector of learners or function. A vector of strings or function.
@@ -24,6 +25,7 @@ ipw <- function(dat,
                 outcome,
                 censoring,
                 forms,
+                form_cens,
                 shift_functions,
                 survey_weights,
                 SL_library,
@@ -34,7 +36,7 @@ ipw <- function(dat,
 ################################################################################
 
 #' Implementation of a specific IPW estimator (categorical exposures)
-#' for a single time point.
+#' for a single exposure and time point.
 #'
 #' @param dat Dataset with confounders, exposures, and outcome. A dataframe.
 #' @param idxs Indexes for bootstrapping. A vector of integers.
@@ -42,6 +44,7 @@ ipw <- function(dat,
 #' @param exposure Exposure variable. A string.
 #' @param outcome Outcome variable. A string.
 #' @param form Model formula. A string.
+#' @param form_cens TBD
 #' @param survey_weights Optional vector of survey/balancing weights. A vector.
 #' @param SL_library Vector of learners or function. A vector of strings or function.
 #' @param cross_val TBD.
@@ -56,6 +59,7 @@ ipw_cat_fix <- function(dat,
                         exposure,
                         outcome,
                         form,
+                        form_cens,
                         survey_weights,
                         SL_library,
                         cross_val) {
@@ -126,7 +130,7 @@ ipw_cat_fix <- function(dat,
           dat[[prob_label]] <- predict(mods[[1]], type = "response")
         } else {
           # Maximum value of the exposure
-          sum_probs <- lapply(unique_exposures[2:(levels_exposure-1)], function(i) {
+          sum_probs <- lapply(unique_exposures[1:(levels_exposure-1)], function(i) {
             predict(mods[[as.character(i)]], newdata = dat, type = "response")
           }) |>
             dplyr::bind_cols()
@@ -147,7 +151,24 @@ ipw_cat_fix <- function(dat,
       dat[dat[[exposure]] == min_exposure, "weights"] <- 1 +
         (dat[dat[[exposure]] == min_exposure, paste0("p", unique_exposures[2])] /
            dat[dat[[exposure]] == min_exposure, paste0("p", unique_exposures[1])])
-      # End estimation weights
+
+      # Estimate censoring weights P[C=0|A,W]
+      dat[["cens"]] <- as.factor(as.integer(is.na(dat[[outcome]])))
+      cens_mod <- glm(
+        formula = as.formula(paste0("cens ~ ", form_cens)),
+        data = dat,
+        family = binomial(link = "logit"),
+        weights = survey_weights,
+        na.action = "na.omit"
+      )
+      dat <- dat |>
+        dplyr::mutate(
+          p_cens = predict(cens_mod, type = "response"),
+          w_cens = dplyr::case_when(
+            cens == 1 ~ 0,
+            cens == 0 ~ 1 / p_cens
+          )
+        )
 
     } else {
       # SL
@@ -159,8 +180,13 @@ ipw_cat_fix <- function(dat,
 
   } # End if for CV choice
 
+  dat[is.na(dat[[outcome]]), outcome] <- 0
+
   return(
-    c(mean(dat[[outcome]]), mean(dat[["weights"]] * dat[[outcome]]))
+    c(
+      mean(dat[[outcome]]),
+      mean(dat[["weights"]] * dat[["w_cens"]] * dat[[outcome]])
+    )
   )
 } # End function ipw_cat_fix
 ################################################################################
