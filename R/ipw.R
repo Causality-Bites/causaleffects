@@ -62,7 +62,10 @@ ipw_cat_fix <- function(dat,
   # Sample for bootstrapping
   dat <- dat[idxs, ]
   old_colnames <- colnames(dat)
-  levels_exposure <- length(unique(dat[[exposure]]))
+  unique_exposures <- sort(unique(as.numeric(as.character(dat[[exposure]]))))
+  levels_exposure <- length(unique_exposures)
+  min_exposure <- min(as.numeric(as.character(dat[[exposure]])), na.rm = TRUE)
+  max_exposure <- max(as.numeric(as.character(dat[[exposure]])), na.rm = TRUE)
 
   # Implementation #
   if (is.null(cross_val)) {
@@ -92,34 +95,39 @@ ipw_cat_fix <- function(dat,
           dplyr::across(setdiff(colnames(dat), old_colnames), as.factor)
         )
 
-      mods <- lapply(1:(levels_exposure - 1), function(lev) {
-        dat_fit <- ifelse(
-          lev == 1,
-          dat,
-          dat[dat[[exposure]] != min(dat[[exposure]], na.rm = TRUE), ]
-        )
+      mods <- lapply(unique_exposures[1:levels_exposure-1], function(lev) {
+        if (lev == min_exposure) {
+          dat_fit <- dat
+        } else {
+          dat_fit <- dat[dat[[exposure]] != min_exposure, ]
+        }
         glm(
-          formula = as.formula(form),
+          formula = as.formula(paste0(
+            paste0(exposure, "_", lev),
+            " ~ ",
+            form
+          )),
           data = dat_fit,
           family = binomial(link = "logit"),
           weights = survey_weights,
           na.action = "na.omit"
         )
       }) # End fitting models
+      names(mods) <- unique_exposures[1:levels_exposure-1]
 
       # Estimate probabilities and weights
-      for (lev in 1:levels_exposure) {
+      for (lev in unique_exposures) {
         prob_label <- paste0("p", lev)
-        if (lev > 1 & lev < levels_exposure) {
+        if (lev > min_exposure & lev < max_exposure) {
           dat[[prob_label]] <- stats::predict(
-            mods[[lev]], newdata = dat, type = "response"
+            mods[[as.character(lev)]], newdata = dat, type = "response"
           ) * (1 - predict(mods[[1]], type = "response"))
-        } else if (lev == 1) {
-          dat[[prob_label]] <- predict(mods[[lev]], type = "response")
+        } else if (lev == min_exposure) {
+          dat[[prob_label]] <- predict(mods[[as.character(lev)]], type = "response")
         } else {
           # Maximum value of the exposure
-          sum_probs <- lapply(2:(idx - 1), function(i) {
-            predict(mods[[i]], newdata = dat, type = "response")
+          sum_probs <- lapply(unique_exposures[1:levels_exposure-1], function(i) {
+            predict(mods[[as.character(i)]], newdata = dat, type = "response")
           }) |>
             dplyr::bind_cols()
           sum_probs <- apply(sum_probs, MARGIN = 1, FUN = sum)
@@ -129,14 +137,17 @@ ipw_cat_fix <- function(dat,
       } # End estimation probabilities
 
       dat[["weights"]] <- NA
-      dat[dat[[exposure]] == levels_exposure, "weights"] <- 0
-      dat[dat[[exposure]] == 1, "weights"] <- 1 +
-        (dat[dat[[exposure]] == 1, "p2"] / dat[dat[[exposure]] == 1, "p1"])
-      for (lev in 2:(levels_exposure - 1)) {
-        num <- dat[dat[[exposure]] == idx, paste0("p", idx + 1)]
-        den <- dat[dat[[exposure]] == idx, paste0("p", idx)]
+      dat[dat[[exposure]] == max_exposure, "weights"] <- 0
+      for (lev in unique_exposures[2:levels_exposure-1]) {
+        pos <- which(unique_exposures == lev)
+        num <- dat[dat[[exposure]] == lev, paste0("p", unique_exposures[pos+1])]
+        den <- dat[dat[[exposure]] == lev, paste0("p", lev)]
         dat[dat[[exposure]] == lev, "weights"] <- num / den
-      } # End estimation weights
+      }
+      dat[dat[[exposure]] == min_exposure, "weights"] <- 1 +
+        (dat[dat[[exposure]] == min_exposure, paste0("p", unique_exposures[2])] /
+           dat[dat[[exposure]] == min_exposure, paste0("p", unique_exposures[1])])
+      # End estimation weights
 
     } else {
       # SL
