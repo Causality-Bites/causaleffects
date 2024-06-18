@@ -90,14 +90,15 @@ param_gcomp_fix <- function(dat,
 
       # Create counterfactual data and predict outcome
       dat_shifted <- shift_function(dat, exposures)
-      dat[[outcome]] <- stats::predict(mod, dat)
-      dat_shifted[[outcome]] <- stats::predict(mod, dat_shifted)
+      dat[[outcome]] <- stats::predict(mod, newdata = dat)
+      dat_shifted[[outcome]] <- stats::predict(mod, newdata = dat_shifted)
 
     } else {
       # SL
     } # End if for type model
 
   } else {
+    # Sample splitting
 
   } # End if for CV choice
 
