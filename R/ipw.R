@@ -152,20 +152,25 @@ ipw_cat_fix <- function(dat,
         (dat[dat[[exposure]] == min_exposure, paste0("p", unique_exposures[2])] /
            dat[dat[[exposure]] == min_exposure, paste0("p", unique_exposures[1])])
 
-      # Estimate censoring weights P[C=0|A,W]
-      dat[["observed"]] <- as.factor(as.integer(!is.na(dat[[outcome]])))
-      cens_mod <- glm(
-        formula = as.formula(paste0("observed ~ ", form_cens)),
-        data = dat,
-        family = binomial(link = "logit"),
-        weights = survey_weights,
-        na.action = "na.omit"
-      )
-      dat <- dat |>
-        dplyr::mutate(
-          p_cens = predict(cens_mod, type = "response"),
-          w_cens = 1 / p_cens
+      # Eventually estimate censoring weights P[C=0|A,W]
+      if (sum(is.na(dat[[outcome]])) > 0) {
+        dat[["observed"]] <- as.factor(as.integer(!is.na(dat[[outcome]])))
+        cens_mod <- glm(
+          formula = as.formula(paste0("observed ~ ", form_cens)),
+          data = dat,
+          family = binomial(link = "logit"),
+          weights = survey_weights,
+          na.action = "na.omit"
         )
+        dat <- dat |>
+          dplyr::mutate(
+            p_cens = predict(cens_mod, newdata = dat, type = "response"),
+            w_cens = 1 / p_cens
+          )
+      } else {
+        dat <- dat |>
+          dplyr::mutate(w_cens = 1)
+      } # End censoring weights
 
     } else {
       # SL
