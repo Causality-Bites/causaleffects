@@ -120,23 +120,23 @@ ipw_cat_fix <- function(dat,
       names(mods) <- unique_exposures[1:(levels_exposure-1)]
 
       # Estimate probabilities and weights
+      p0 <- predict(mods[[1]], newdata = dat, type = "response")
       for (lev in unique_exposures) {
         prob_label <- paste0("p", lev)
         if (lev > min_exposure & lev < max_exposure) {
           dat[[prob_label]] <- stats::predict(
             mods[[as.character(lev)]], newdata = dat, type = "response"
-          ) * (1 - predict(mods[[1]], type = "response"))
+          ) * (1 - p0)
         } else if (lev == min_exposure) {
-          dat[[prob_label]] <- predict(mods[[1]], type = "response")
+          dat[[prob_label]] <- p0
         } else {
           # Maximum value of the exposure
-          sum_probs <- lapply(unique_exposures[1:(levels_exposure-1)], function(i) {
+          sum_probs <- lapply(unique_exposures[2:(levels_exposure-1)], function(i) {
             predict(mods[[as.character(i)]], newdata = dat, type = "response")
           }) |>
             dplyr::bind_cols()
           sum_probs <- apply(sum_probs, MARGIN = 1, FUN = sum)
-          dat[[prob_label]] <- (1 - sum_probs) *
-            (1 - predict(mods[[1]], type = "response"))
+          dat[[prob_label]] <- 1 - p0 - (1 - p0) * sum_probs
         }
       } # End estimation probabilities
 
