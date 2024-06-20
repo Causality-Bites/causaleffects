@@ -167,6 +167,7 @@ ipw_cat_fix <- function(dat,
             p_cens = predict(cens_mod, newdata = dat, type = "response"),
             w_cens = 1 / p_cens
           )
+        dat[dat$observed == 0, "outcome"] <- 0
       } else {
         dat <- dat |>
           dplyr::mutate(w_cens = 1)
@@ -181,8 +182,6 @@ ipw_cat_fix <- function(dat,
     # Sample splitting
 
   } # End if for CV choice
-
-  dat[dat$observed == 0, "outcome"] <- 0
 
   return(
     c(
