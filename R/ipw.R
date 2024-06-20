@@ -182,7 +182,7 @@ ipw_cat_fix <- function(dat,
 
   } # End if for CV choice
 
-  dat <- dat[!is.na(dat$outcome), ]
+  dat[dat$observed == 0, "outcome"] <- 0
 
   return(
     c(
