@@ -35,10 +35,105 @@ ipw <- function(dat,
 } # End function ipw
 ################################################################################
 
-#' Implementation of a specific IPW estimator (categorical exposures)
-#' for a single exposure and time point.
+#' Implementation of a specific IPW estimator
+#' for a single binary exposure and time point.
 #'
-#' @param dat Dataset with confounders, exposures, and outcome. A dataframe.
+#' @param dat Dataset with confounders, exposure, and outcome. A dataframe.
+#' @param idxs Indexes for bootstrapping. A vector of integers.
+#' @param baseline Baseline confounders. A vector of strings.
+#' @param exposure Exposure variable. A string.
+#' @param outcome Outcome variable. A string.
+#' @param form Model formula. A string.
+#' @param form_cens TBD
+#' @param survey_weights Optional vector of survey/balancing weights. A vector.
+#' @param SL_library Vector of learners or function. A vector of strings or function.
+#' @param cross_val TBD.
+#'
+#' @return The counterfactual means of the outcome under no intervention
+#'        (natural course) and the intervention of interest as
+#'        specified by the shift function.
+#' @export
+ipw_bin_fix <- function(dat,
+                        idxs,
+                        baseline,
+                        exposure,
+                        outcome,
+                        form,
+                        form_cens,
+                        survey_weights,
+                        SL_library,
+                        cross_val) {
+  # Sample for bootstrapping
+  dat <- dat[idxs, ]
+
+  # Implementation #
+  if (is.null(cross_val)) {
+    # No cross-fitting
+
+    if (SL_library == "glm") {
+      # Logistic regression model
+      mod <- glm(
+        formula = as.formula(paste0(exposure, " ~ ", form)),
+        data = dat,
+        family = binomial(link = "logit"),
+        weights = survey_weights,
+        na.action = "na.omit"
+      )
+
+      # Estimate probabilities and weights
+      p1 <- predict(mod, newdata = dat, type = "response")
+      dat <- dat |>
+        dplyr::mutate(
+          weights = dplyr::case_when(
+            .data[[exposure]] == 1 ~ 0,
+            .data[[exposure]] == 0 ~ (1 + (p1 / (1 - p1))),
+          )
+        )
+
+      # Eventually estimate censoring weights P[C=0|A,W]
+      if (sum(is.na(dat[[outcome]])) > 0) {
+        dat[["observed"]] <- as.factor(!is.na(dat[[outcome]]))
+        cens_mod <- glm(
+          formula = as.formula(paste0("observed ~ ", form_cens)),
+          data = dat,
+          family = binomial(link = "logit"),
+          weights = survey_weights,
+          na.action = "na.omit"
+        )
+        dat <- dat |>
+          dplyr::mutate(
+            p_cens = predict(cens_mod, newdata = dat, type = "response"),
+            w_cens = 1 / p_cens
+          )
+        dat[dat$observed == FALSE, "outcome"] <- 0
+      } else {
+        dat <- dat |>
+          dplyr::mutate(w_cens = 1)
+      } # End censoring weights
+
+    } else if (SL_library == "SL") {
+      # SL
+
+    } # End if for type model
+
+  } else {
+    # Sample splitting
+
+  } # End if for CV choice
+
+  return(
+    c(
+      mean(dat[["w_cens"]] * dat[[outcome]]),
+      mean(dat[["weights"]] * dat[["w_cens"]] * dat[[outcome]])
+    )
+  )
+} # End ipw_bin_fix
+################################################################################
+
+#' Implementation of a specific IPW estimator
+#' for a single categorical exposure and time point.
+#'
+#' @param dat Dataset with confounders, exposure, and outcome. A dataframe.
 #' @param idxs Indexes for bootstrapping. A vector of integers.
 #' @param baseline Baseline confounders. A vector of strings.
 #' @param exposure Exposure variable. A string.
@@ -173,7 +268,7 @@ ipw_cat_fix <- function(dat,
           dplyr::mutate(w_cens = 1)
       } # End censoring weights
 
-    } else {
+    } else if (SL_library == "SL") {
       # SL
 
     } # End if for type model

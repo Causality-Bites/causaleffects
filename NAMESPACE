@@ -2,6 +2,7 @@
 
 export(inference_boot)
 export(ipw)
+export(ipw_bin_fix)
 export(ipw_cat_fix)
 export(param_gcomp_fix)
 export(parametric_g_computation)
