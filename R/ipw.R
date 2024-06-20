@@ -154,7 +154,7 @@ ipw_cat_fix <- function(dat,
 
       # Eventually estimate censoring weights P[C=0|A,W]
       if (sum(is.na(dat[[outcome]])) > 0) {
-        dat[["observed"]] <- as.factor(as.integer(!is.na(dat[[outcome]])))
+        dat[["observed"]] <- as.factor(!is.na(dat[[outcome]]))
         cens_mod <- glm(
           formula = as.formula(paste0("observed ~ ", form_cens)),
           data = dat,
@@ -167,7 +167,7 @@ ipw_cat_fix <- function(dat,
             p_cens = predict(cens_mod, newdata = dat, type = "response"),
             w_cens = 1 / p_cens
           )
-        dat[dat$observed == 0, "outcome"] <- 0
+        dat[dat$observed == FALSE, "outcome"] <- 0
       } else {
         dat <- dat |>
           dplyr::mutate(w_cens = 1)
@@ -185,7 +185,7 @@ ipw_cat_fix <- function(dat,
 
   return(
     c(
-      mean(dat[[outcome]]),
+      mean(dat[["w_cens"]] * dat[[outcome]]),
       mean(dat[["weights"]] * dat[["w_cens"]] * dat[[outcome]])
     )
   )
