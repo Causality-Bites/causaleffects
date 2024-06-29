@@ -4,6 +4,7 @@ PKGVERS = `sed -n "s/Version: *\([^ ]*\)/\1/p" DESCRIPTION`
 all: doc vignettes site install_deps build
 
 doc:
+	Rscript -e "devtools::build_readme()"
 	Rscript -e "devtools::document()"
 
 vignettes: doc
